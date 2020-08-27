@@ -112,13 +112,26 @@ function _knn_from_dists(dist_mat::AbstractMatrix{S}, k::Integer; ignore_diagona
     # Ignore diagonal 0 elements (which will be smallest) when distance matrix represents pairwise distances of the same set
     # If dist_mat represents distances between two different sets, diagonal elements be nontrivial
     range = (1:k) .+ ignore_diagonal
-    knns_ = collect(collect.(eachslice(Array{Int,2}(undef,k,size(dist_mat,2)),dims=2)))
-    @showprogress for i ∈ 1:size(dist_mat, 2) # takes 1:05 hour for id_accepteur without multi threading
-        knns_[i] = partialsortperm(view(dist_mat, :, i), range)
+    knns  = Array{Int,2}(undef,k,size(dist_mat,2))
+    dists = Array{S,2}(undef,k,size(dist_mat,2))
+    @showprogress for i ∈ 1:size(dist_mat, 2)
+        knns[:,i] = partialsortperm(view(dist_mat, :, i), range) # 4:40 min for the 50k submatrix. might be moderately faster (but requires retiming of older variant)
     end
-    dists_ = [dist_mat[:, i][knns_[i]] for i in eachindex(knns_)]
-    knns = hcat(knns_...)::Matrix{Int}
-    dists = collect(hcat(dists_...))::Matrix{S}
+    @showprogress for i ∈ 1:size(dist_mat, 2)
+        # dists[:,i] = dist_mat[:,i][knns[:,i]] # this is roughly as fast as the original implementation: 2:22 on the 50k submatrix
+        dists[:,i] = dist_mat[knns[:,i],i] # this is much much faster : 0.1s for the 50k submatrix. the array comprehension version also works as fast with the indexing change
+    end
+    # knns_ = collect(collect.(eachslice(Array{Int,2}(undef,k,size(dist_mat,2)),dims=2)))
+    # @showprogress for i ∈ 1:size(dist_mat, 2) # takes 1:05 hour for id_accepteur without multi threading. takes 5:27 min for a submatrix of size 50k
+    #     knns_[i] = partialsortperm(view(dist_mat, :, i), range)
+    # end
+    # # @time knns_ = [partialsortperm(view(dist_mat, :, i), range) for i in 1:size(dist_mat, 2)]; this runs out of memory for id_accepteur dist_mat after like ~10 minutes. not sure why. also oom for the 50k submatrix.
+    # @info "building dists_"
+    # dists_ = [dist_mat[:, i][knns_[i]] for i in eachindex(knns_)] # takes 38 minutes with id_accepteur dist_mat and knns_
+    # # @infiltrate
+    # @info "concatenating"
+    # knns = hcat(knns_...)::Matrix{Int}
+    # dists = collect(hcat(dists_...))::Matrix{S}
     return knns, dists
 end
 

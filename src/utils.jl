@@ -118,7 +118,7 @@ function _knn_from_dists(dist_mat::AbstractMatrix{S}, k::Integer; ignore_diagona
     end
     dists_ = [dist_mat[:, i][knns_[i]] for i in eachindex(knns_)]
     knns = hcat(knns_...)::Matrix{Int}
-    dists = hcat(dists_...)::Matrix{S}
+    dists = collect(hcat(dists_...))::Matrix{S}
     return knns, dists
 end
 

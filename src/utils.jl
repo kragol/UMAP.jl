@@ -112,7 +112,10 @@ function _knn_from_dists(dist_mat::AbstractMatrix{S}, k::Integer; ignore_diagona
     # Ignore diagonal 0 elements (which will be smallest) when distance matrix represents pairwise distances of the same set
     # If dist_mat represents distances between two different sets, diagonal elements be nontrivial
     range = (1:k) .+ ignore_diagonal
-    knns_ = [partialsortperm(view(dist_mat, :, i), range) for i in 1:size(dist_mat, 2)]
+    knns_ = collect(collect.(eachslice(Array{Int,2}(undef,k,size(dist_mat,2)),dims=2)))
+    @showprogress for i ∈ 1:size(dist_mat, 2) # takes 1:05 hour for id_accepteur without multi threading
+        knns_[i] = partialsortperm(view(dist_mat, :, i), range)
+    end
     dists_ = [dist_mat[:, i][knns_[i]] for i in eachindex(knns_)]
     knns = hcat(knns_...)::Matrix{Int}
     dists = hcat(dists_...)::Matrix{S}

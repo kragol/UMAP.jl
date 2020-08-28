@@ -115,9 +115,8 @@ function _knn_from_dists(dist_mat::AbstractMatrix{S}, k::Integer; ignore_diagona
     knns  = Array{Int,2}(undef,k,size(dist_mat,2))
     dists = Array{S,2}(undef,k,size(dist_mat,2))
     pm = Progress(size(dist_mat, 2),desc="finding nearest neighbors ")
-    Threads.@threads for i ∈ 1:size(dist_mat, 2) # from 2:25 to 0:19 with threads! (~5min for the full id_accepteur matrix!)
-        # knns[:,i]  = partialsortperm(collect(dist_mat[ :, i]), range) # this takes 3:25 when using view instead of collect takes 4:40 (on the 50k size dist_mat)
-        knns[:,i]  = partialsortperm(dist_mat[ :, i], range) # this takes 2:24 with my implementation of partialsortperm(::DefaultArray,...)
+    Threads.@threads for i ∈ 1:size(dist_mat, 2)
+        knns[:,i]  = partialsortperm(dist_mat[ :, i], range)
         dists[:,i] = dist_mat[knns[:,i],i]
         next!(pm)
     end
